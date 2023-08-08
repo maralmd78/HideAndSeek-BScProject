@@ -106,10 +106,10 @@ class ParticleSim():
         self.robots_command_vel = np.array([], dtype=np.float32).reshape(0,2) # todo try float16 later
         self.robots_color = []
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
 
-    seg1 = Segment((-1, 1), Point(-1, 1)+Point(1e-6, 1e-6))
-    print(seg1)
+    # seg1 = Segment((-1, 1), Point(-1, 1)+Point(1e-6, 1e-6))
+    # print(seg1)
     # seg2 = Segment((0, 1), (0, -1))
     # print(intersect(seg1, seg2))
     

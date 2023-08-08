@@ -14,8 +14,8 @@ class Grid:
 
         # with open('Qtable_train_seeker.pkl', "rb") as f:  # Python 3: open(..., 'rb')
         #     Qtable_seeker_init, Qtable_hider_init = pickle.load(f)
-        # # Qtable_seeker_init = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
-        # # Qtable_hider_init = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
+        # Qtable_seeker_init = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
+        # Qtable_hider_init = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
         # self.Qtable_seeker, self.Qtable_hider = Qlearning(maze, Qtable_seeker_init, Qtable_hider_init, 50000, 100, gamma=0.99, alpha=0.2)
         # with open('Qtable_train_hider50000.pkl', 'wb') as f:  
         #     pickle.dump([self.Qtable_seeker, self.Qtable_hider], f)
