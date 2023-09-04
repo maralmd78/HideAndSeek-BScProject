@@ -26,12 +26,12 @@ void setup()
 
   
   digitalWrite(DIR1, LOW);
-  digitalWrite(DIR2, LOW);
+//  digitalWrite(DIR2, LOW);
 //  digitalWrite(DIR3, LOW);
 
   
-  tone(STEP1, 100);
-  tone(STEP2, 100);
+  tone(STEP1, 400);
+//  tone(STEP2, 100);
 //  tone(STEP3, 100);
   
   Serial.println("test1");
@@ -42,7 +42,11 @@ void loop()
 {
   
   counter ++;
-  Serial.println("boardTest");
+  if(counter==500)
+  {
+    digitalWrite(DIR1, HIGH);
+  }
+  Serial.println(counter);
 
 
      

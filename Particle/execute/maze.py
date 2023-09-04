@@ -6,7 +6,7 @@ from copy import deepcopy
 
 class MazeSim():
     def __init__(self):
-        self.state_space = np.arange(0, 20*20, 1)
+        self.state_space = np.arange(0, 20*20, 1) # 20 cells for each robot -->20*20=400
         self.action_space = ['up', 'right', 'down', 'left']
 
         # construct the maze
@@ -52,42 +52,60 @@ class MazeSim():
     def step(self, action_seeker, action_hider):
         (i_s, j_s), (i_h, j_h) = self.state_2_index(self.state)
         
+        reward_seeker = -1
+        reward_hider = 1
+        done = False
+        
         # seeker
         if action_seeker == 'up':
             if self.maze[i_s-1, j_s] != -1:
                 i_s = i_s - 1
+            elif self.maze[i_s-1, j_s] == -1:
+                reward_seeker -= 5 # hit the wall
         elif action_seeker == 'right':
             if self.maze[i_s, j_s+1] != -1:
                 j_s = j_s + 1
+            elif self.maze[i_s, j_s+1] == -1:
+                reward_seeker -= 5 # hit the wall
         elif action_seeker == 'down':
             if self.maze[i_s+1, j_s] != -1:
                 i_s = i_s + 1
+            elif self.maze[i_s+1, j_s] == -1:
+                reward_seeker -= 5 # hit the wall
         elif action_seeker == 'left':
             if self.maze[i_s, j_s-1] != -1:
                 j_s = j_s - 1
+            elif self.maze[i_s, j_s-1] == -1:
+                reward_seeker -= 5 # hit the wall
         
         # hider
         if action_hider == 'up':
             if self.maze[i_h-1, j_h] != -1:
                 i_h = i_h - 1
+            elif self.maze[i_h-1, j_h] == -1:
+                reward_hider -= 5 # hit the wall
         elif action_hider == 'right':
             if self.maze[i_h, j_h+1] != -1:
                 j_h = j_h + 1
+            elif self.maze[i_h, j_h+1] == -1:
+                reward_hider -= 5 # hit the wall
         elif action_hider == 'down':
             if self.maze[i_h+1, j_h] != -1:
                 i_h = i_h + 1
+            elif self.maze[i_h+1, j_h] == -1:
+                reward_hider -= 5 # hit the wall
         elif action_hider == 'left':
             if self.maze[i_h, j_h-1] != -1:
                 j_h = j_h - 1
+            elif self.maze[i_h, j_h-1] == -1:
+                reward_hider -= 5 # hit the wall
         
         self.state = self.index_2_state((i_s, j_s), (i_h, j_h))
-        reward_seeker = -1
-        reward_hider = 1
-        done = False
         if (i_s, j_s) == (i_h, j_h):
             reward_seeker += 100
             reward_hider -= 100
             done = True
+        
         return (self.state, reward_seeker, reward_hider, done)
             
     
@@ -159,17 +177,23 @@ class MazeSim():
     def pi_eps_greedy(self, Qtable: np.ndarray, eps: float, s: int):
         decide = np.random.choice(['greedy', 'random'], size=1, p=[1-eps, eps])[0]
         return self.action_space[np.random.choice(np.argwhere(Qtable[s-1, :] == np.amax(Qtable[s-1, :])).flatten(), size=1)[0]] if decide == 'greedy' else np.random.choice(self.action_space, size=1)[0]
-        return self.action_space[np.argmax(Qtable[s, :])] if decide == 'greedy' else np.random.choice(self.action_space, size=1)[0] # problem: chooses the first one in multiple max
+        # return self.action_space[np.argmax(Qtable[s, :])] if decide == 'greedy' else np.random.choice(self.action_space, size=1)[0] # problem: chooses the first one in multiple max
 
 
-def Qlearning(maze:MazeSim, Qtable_seeker_init, Qtable_hider_init, episode_num:int, max_step_num:int, gamma:float, alpha:float):
-    epsilon = 0.1
-    # epsilon_start = 1.0
-    # epsilon_end = 0.001
-    # eps_decayfactor = (epsilon_end/epsilon_start)**(1/episode_num)
-    # epsilon = epsilon_start
+def Qlearning(maze:MazeSim, Qtable_seeker_init, Qtable_hider_init, episode_num:int, max_step_num:int, gamma:float, alpha:float, epsilon=float):
+    epsilon_start = 1.0
+    epsilon_end = 0.001
+    decay_rate = (epsilon_start - epsilon_end) / episode_num
+    epsilon = epsilon_start
+    
     Qtable_seeker = Qtable_seeker_init
     Qtable_hider = Qtable_hider_init
+    Qtable_seeker_prev = np.copy(Qtable_seeker)
+    Qtable_hider_prev = np.copy(Qtable_hider)
+    rewards_seeker = np.zeros(episode_num, dtype=int)
+    rewards_hider = np.zeros(episode_num, dtype=int)
+    norms_seeker = np.zeros(episode_num, dtype=float)
+    norms_hider = np.zeros(episode_num, dtype=float)
     # Qtable_seeker = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
     # Qtable_hider = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
     for episode in tqdm(range(episode_num)):
@@ -179,20 +203,29 @@ def Qlearning(maze:MazeSim, Qtable_seeker_init, Qtable_hider_init, episode_num:i
         for step in range(max_step_num):
             state = deepcopy(maze.state)
             next_state, reward_seeker, reward_hider, done = maze.step(action_seeker, action_hider)
+            rewards_seeker[episode] += reward_seeker
+            rewards_hider[episode] += reward_hider
             action_seeker_number = maze.action_2_number[action_seeker]
             action_hider_number = maze.action_2_number[action_hider]
-            # Qtable_seeker[state, action_seeker_number] = Qtable_seeker[state, action_seeker_number] + alpha * (reward_seeker + gamma*np.max(Qtable_seeker[next_state, :]) - Qtable_seeker[state, action_seeker_number])
+            Qtable_seeker[state, action_seeker_number] = Qtable_seeker[state, action_seeker_number] + alpha * (reward_seeker + gamma*np.max(Qtable_seeker[next_state, :]) - Qtable_seeker[state, action_seeker_number])
             Qtable_hider[state, action_hider_number] = Qtable_hider[state, action_hider_number] + alpha * (reward_hider + gamma*np.max(Qtable_hider[next_state, :]) - Qtable_hider[state, action_hider_number])
-            
+
             action_seeker = maze.pi_eps_greedy(Qtable_seeker, epsilon, maze.state)
             action_hider = maze.pi_eps_greedy(Qtable_hider, epsilon, maze.state)
             if done:
                 break
-        # epsilon = epsilon*eps_decayfactor
+        epsilon -= decay_rate
+        Qtable_seeker_diff = Qtable_seeker - Qtable_seeker_prev
+        Qtable_hider_diff = Qtable_hider - Qtable_hider_prev
+        norms_seeker[episode] = np.linalg.norm(Qtable_seeker_diff, ord=2)
+        norms_hider[episode] = np.linalg.norm(Qtable_hider_diff, ord=2)
+        Qtable_seeker_prev = np.copy(Qtable_seeker)
+        Qtable_hider_prev = np.copy(Qtable_hider)
+        # epsilon = initial_epsilonn/(1+decay_rate*episode)
         
     # policy_seeker = [maze.action_space[np.argmax(row)] for row in Qtable_seeker]
     # policy_hider = [maze.action_space[np.argmax(row)] for row in Qtable_hider]
-    return (Qtable_seeker, Qtable_hider)
+    return (Qtable_seeker, Qtable_hider, rewards_seeker, rewards_hider, norms_seeker, norms_hider)
 
 
 if __name__ == '__main__':

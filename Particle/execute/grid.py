@@ -1,7 +1,7 @@
 import numpy as np
 from sympy import Point, Segment
 from simulator.particlesim import ParticleSim
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QRectF
 from execute.control import GotoPoint
 # from execute.mazeSim import MazeSim, QLearning
 from execute.maze import MazeSim, Qlearning
@@ -12,24 +12,33 @@ class Grid:
         self.ps = ps
         self.maze = maze
 
-        # with open('Qtable_train_seeker.pkl', "rb") as f:  # Python 3: open(..., 'rb')
+        # with open('Qtable_train_seeker&hider_final-50000.pkl', "rb") as f:  # Python 3: open(..., 'rb')
+        #     self.Qtable_seeker, self.Qtable_hider = pickle.load(f)
+        ########## for loading the q table
+        # with open('Qtable_train_only_hider-50000.pkl', "rb") as f:  # Python 3: open(..., 'rb')
         #     Qtable_seeker_init, Qtable_hider_init = pickle.load(f)
+        #     # self.Qtable_seeker, self.Qtable_hider = pickle.load(f)
+        ############ for first train with initial values 0 for  both q tables
         # Qtable_seeker_init = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
         # Qtable_hider_init = np.zeros((len(maze.state_space), len(maze.action_space)), dtype=float)
-        # self.Qtable_seeker, self.Qtable_hider = Qlearning(maze, Qtable_seeker_init, Qtable_hider_init, 50000, 100, gamma=0.99, alpha=0.2)
-        # with open('Qtable_train_hider50000.pkl', 'wb') as f:  
-        #     pickle.dump([self.Qtable_seeker, self.Qtable_hider], f)
+        # self.Qtable_seeker, self.Qtable_hider, self.rewards_seeker, self.rewards_hider = Qlearning(maze, Qtable_seeker_init, Qtable_hider_init, 300000, 1000, gamma=0.99, alpha=0.2)
+        # with open('Qtable_train_seekerOnly13_(maze, 0, 0, 300000, 1000, 0.99, 0.2).pkl', 'wb') as f:  
+        #     pickle.dump([self.Qtable_seeker, self.Qtable_hider, self.rewards_seeker, self.rewards_hider], f)
+        
+        with open('Qtable_train_seekerOnly13_(maze, 0, 0, 300000, 1000, 0.99, 0.2).pkl', "rb") as f:  # Python 3: open(..., 'rb')
+            self.Qtable_seeker, self.Qtable_hider, self.rewards_seeker, self.rewards_hider = pickle.load(f)
+
         # self.policy_seeker = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_seeker]
         # self.policy_hider = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_hider]
         
-        with open('Qtable_train_hider50000.pkl', "rb") as f:  # Python 3: open(..., 'rb')
-            self.Qtable_seeker, self.Qtable_hider = pickle.load(f)
-        print(self.Qtable_seeker)
+        # with open('Qtable_train_hider50000.pkl', "rb") as f:  # Python 3: open(..., 'rb')
+            # self.Qtable_seeker, self.Qtable_hider = pickle.load(f)
+        
         self.policy_seeker = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_seeker]
         self.policy_hider = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_hider]
         
-        self.gridArr = self.maze.maze
-        self.cellHeight = 200/self.gridArr.shape[0]
+        self.gridArr = self.maze.maze ## 7*7 array
+        self.cellHeight = 200/self.gridArr.shape[0] ## gui:-100 to 100 -->200
         self.cellWidth = 200/self.gridArr.shape[1]
 
         self.seekerID = None
@@ -49,12 +58,14 @@ class Grid:
                     self.ps.add_wall(Segment((middlePoint.x+self.cellWidth/2, middlePoint.y+self.cellHeight/2), (middlePoint.x+self.cellWidth/2, middlePoint.y-self.cellHeight/2)))
                     #down
                     self.ps.add_wall(Segment((middlePoint.x-self.cellWidth/2, middlePoint.y-self.cellHeight/2), (middlePoint.x+self.cellWidth/2, middlePoint.y-self.cellHeight/2)))
+                    #rect
+                    self.ps.add_rect(QRectF(middlePoint.x-self.cellWidth/2, middlePoint.y+self.cellHeight/2, self.cellWidth, -self.cellHeight))
         
         # add lines
-        for i in range(self.gridArr.shape[0]):
-            self.ps.add_line(Segment((-100, 100-(i*self.cellHeight)), (100, 100-(i*self.cellHeight))))
-        for i in range(self.gridArr.shape[1]):
-            self.ps.add_line(Segment((-100+(i*self.cellWidth), -100), (-100+(i*self.cellWidth), 100)))
+        # for i in range(self.gridArr.shape[0]):
+        #     self.ps.add_line(Segment((-100, 100-(i*self.cellHeight)), (100, 100-(i*self.cellHeight))))
+        # for i in range(self.gridArr.shape[1]):
+        #     self.ps.add_line(Segment((-100+(i*self.cellWidth), -100), (-100+(i*self.cellWidth), 100)))
         
 
 

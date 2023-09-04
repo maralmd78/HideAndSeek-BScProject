@@ -27,7 +27,7 @@ def intersect(seg1: Segment, seg2: Segment):
 
 
 class ParticleSim():
-    ROBOT_RADIUS = 2.0
+    ROBOT_RADIUS = 3.0
     def __init__(self, delta_t=0.01) -> None:
         # 'delta_t' is the step time of each step of the simulator
         self.delta_t = delta_t
@@ -47,17 +47,21 @@ class ParticleSim():
         self.walls.append(Segment(Point(-100, -100), Point(-100, 100))) #left
         # store the lines (not considered as obstacles)
         self.lines = []
-
+        self.rectangles = []
 
        
     
-    # adds new wall to the environment
+    # adds a new wall to the environment
     def add_wall(self, segment: Segment):
         self.walls.append(segment)
     
-    # adds new line to the environment
+    # adds a new line to the environment(no impact on the physics)
     def add_line(self, segment: Segment):
         self.lines.append(segment)
+    
+    # adds a new rect to the environment(no impact on the physics)
+    def add_rect(self, coordinate):
+        self.rectangles.append(coordinate)
 
     # adds a new robot with initial position of 'pos' - returns the new id
     def add_robot(self, pos: Point, color: Qt.GlobalColor):

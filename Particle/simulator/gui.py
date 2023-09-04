@@ -45,8 +45,15 @@ class GUI(QOpenGLWidget):
         self.painter.setPen(QPen(Qt.GlobalColor.black, 1))
         self.painter.drawLines([QLineF(*wall.p1, *wall.p2) for wall in self.ps.walls])
 
+        self.painter.setPen(QPen(Qt.GlobalColor.black, 1))
+        self.painter.setBrush(Qt.GlobalColor.lightGray)
+        self.painter.drawRects(self.ps.rectangles)
+
         
         self.painter.end()
+    
+    
+
 
 
 
