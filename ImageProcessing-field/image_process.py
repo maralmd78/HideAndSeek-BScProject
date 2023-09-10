@@ -1,20 +1,27 @@
 from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, Qt, QByteArray
+from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot, Qt, QByteArray, QTimer
 from PyQt6.QtGui import QImage, QPixmap, QKeyEvent, QIntValidator
-from PyQt6.QtNetwork import QUdpSocket, QHostAddress
+from PyQt6.QtNetwork import QUdpSocket, QHostAddress, QAbstractSocket
 from PyQt6 import uic
 import cv2
 import sys
 import json 
 import numpy as np
+import argparse
 
 class thread_cv(QThread):
     new_frame_signal = pyqtSignal(QImage)
     
     def __init__(self):
         super().__init__()
-        self.rectangle = [[178, 86], [410, 318]]
-        self.rotation = -4
+        self.position = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.sendPosition)
+        self.timer.setInterval(250)
+        self.timer.start()
+
+        self.rectangle = [[218, 84], [482, 352]]
+        self.rotation = 4
         self.calibration_process = False
         self.field_height = 120
         self.field_width = 120
@@ -26,11 +33,16 @@ class thread_cv(QThread):
         self.v_max = 0
         self.hsv_mode = "NORMAL"
         self.socket = QUdpSocket()
-        if not self.socket.bind(QHostAddress("127.0.0.1"), 1234):
+        if not self.socket.bind(QHostAddress.SpecialAddress.LocalHost, 1234, QAbstractSocket.BindFlag.ShareAddress | QAbstractSocket.BindFlag.ReuseAddressHint):
             print("ERROR in binding the socket")
     
+    def sendPosition(self):
+        if self.position is not None:
+            self.socket.writeDatagram(QByteArray(bytes(json.dumps(self.position), 'utf-8')), QHostAddress.SpecialAddress.LocalHost, 1234)
+
     def run(self):
-        cap = cv2.VideoCapture('output.avi')
+        # cap = cv2.VideoCapture('output.avi')
+        cap = cv2.VideoCapture(0)
         while True:
             ret, frame = cap.read()
             if ret:
@@ -43,6 +55,7 @@ class thread_cv(QThread):
         frame = self.rotate_image(frame, self.rotation)
         if self.calibration_process:
             frame = cv2.rectangle(frame, tuple(self.rectangle[0]), tuple(self.rectangle[1]), (0, 0, 255), 4)
+            # print(self.rectangle, self.rotation)
         else:
             mask = np.zeros(frame.shape[:2], np.uint8)
             mask[self.rectangle[0][1]:self.rectangle[1][1], self.rectangle[0][0]:self.rectangle[1][0]] = 255
@@ -69,8 +82,8 @@ class thread_cv(QThread):
                 center_wrt_rect = center - self.rectangle[0][::-1]
                 position = center_wrt_rect * np.array([px_cm_height, px_cm_width]) # [height(y), width(x)]
                 position = position[::-1] # [x, y]
-                position = {'x': np.round(position[0], 2), 'y': np.round(position[1], 2)}
-                self.socket.writeDatagram(QByteArray(bytes(json.dumps(position), 'utf-8')), QHostAddress("127.0.0.1"), 1234) 
+                self.position = {'x': np.round(position[0], 2), 'y': np.round(position[1], 2)}
+                 
         
         return frame
     
@@ -252,10 +265,12 @@ class MainWindow(QMainWindow):
         
 
 
-
-
+parser = argparse.ArgumentParser()
+parser.add_argument("--headless", help="headless mode (without GUI)", action="store_true")
+args = parser.parse_args()
 
 app = QApplication(sys.argv)
 mainwindow = MainWindow()
-mainwindow.show()
+if not args.headless:
+    mainwindow.show()
 app.exec()
