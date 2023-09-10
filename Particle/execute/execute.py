@@ -26,6 +26,7 @@ class Execute(threading.Thread):
         
         while True:
             self.grid.step()
+
             # if counter<50:
             #     command = controller.update((1*20, 0*20))
             #     # self.ps.robot_command(controller.id, command)

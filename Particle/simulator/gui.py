@@ -38,6 +38,13 @@ class GUI(QOpenGLWidget):
             self.painter.setPen(QPen(self.ps.robots_color[id], 0.1))
             self.painter.setBrush(self.ps.robots_color[id])
             self.painter.drawEllipse(QPointF(*row), self.ps.ROBOT_RADIUS, self.ps.ROBOT_RADIUS)
+        
+        # virtual robot
+        if self.ps.virtual_robot is not None:
+            x, y, color = self.ps.virtual_robot[0], self.ps.virtual_robot[1], self.ps.virtual_robot[2]
+            self.painter.setPen(QPen(color, 0.1))
+            self.painter.setBrush(color)
+            self.painter.drawEllipse(QPointF(x, y), self.ps.ROBOT_RADIUS, self.ps.ROBOT_RADIUS)
 
         self.painter.setPen(QPen(Qt.GlobalColor.lightGray, 0.5))
         self.painter.drawLines([QLineF(*line.p1, *line.p2) for line in self.ps.lines])

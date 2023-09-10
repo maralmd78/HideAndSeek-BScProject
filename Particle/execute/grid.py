@@ -1,16 +1,26 @@
 import numpy as np
 from sympy import Point, Segment
 from simulator.particlesim import ParticleSim
-from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtCore import Qt, QRectF, QObject, QByteArray
+from PyQt6.QtNetwork import QUdpSocket, QHostAddress, QAbstractSocket, QNetworkDatagram
 from execute.control import GotoPoint
 from execute.maze import MazeSim, Qlearning
 import pickle
+import json
 
-class Grid:
+class Grid(QObject):
     def __init__(self, ps:ParticleSim, maze:MazeSim) -> None:
+        super().__init__()
         self.ps = ps
         self.maze = maze
 
+        self.socket = QUdpSocket()
+        self.socket.readyRead.connect(self.handleIncoming)
+        self.socket.errorOccurred.connect(self.handleError)
+        if not self.socket.bind(QHostAddress.SpecialAddress.LocalHost, 1234, QAbstractSocket.BindFlag.ShareAddress | QAbstractSocket.BindFlag.ReuseAddressHint):
+            print("ERROR in binding the socket")
+        self.pos_fram_real = Point(0, 0)
+        
         # with open('Qtable_train_seeker&hider_final-50000.pkl', "rb") as f:  # Python 3: open(..., 'rb')
         #     self.Qtable_seeker, self.Qtable_hider = pickle.load(f)
         ########## for loading the q table
@@ -24,8 +34,8 @@ class Grid:
         # with open('Qtable_train_seekerOnly13_(maze, 0, 0, 300000, 1000, 0.99, 0.2).pkl', 'wb') as f:  
         #     pickle.dump([self.Qtable_seeker, self.Qtable_hider, self.rewards_seeker, self.rewards_hider], f)
         
-        with open('Qtable_train_seekerOnly13_(maze, 0, 0, 300000, 1000, 0.99, 0.2).pkl', "rb") as f:  # Python 3: open(..., 'rb')
-            self.Qtable_seeker, self.Qtable_hider, self.rewards_seeker, self.rewards_hider = pickle.load(f)
+        with open('onlyForCircle - newreward_Qtable_train_hideronly23_decay(maze, Qtable_seeker_init, Qtable_hider_init, 1000000, 30, gamma=0.99, alpha=0.2, epsilon=0.2).pkl', "rb") as f:  # Python 3: open(..., 'rb')
+            self.Qtable_seeker, self.Qtable_hider, self.rewards_seeker, self.rewards_hider, self.seeker_norm, self.hider_norm = pickle.load(f)
 
         # self.policy_seeker = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_seeker]
         # self.policy_hider = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_hider]
@@ -34,16 +44,16 @@ class Grid:
             # self.Qtable_seeker, self.Qtable_hider = pickle.load(f)
         
         self.policy_seeker = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_seeker]
-        self.policy_hider = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_hider]
+        # self.policy_hider = [maze.action_space[np.argmax(row)] if np.all(row != 0) else 'none' for row in self.Qtable_hider] #REAL
         
         self.gridArr = self.maze.maze ## 7*7 array
         self.cellHeight = 200/self.gridArr.shape[0] ## gui:-100 to 100 -->200
         self.cellWidth = 200/self.gridArr.shape[1]
 
         self.seekerID = None
-        self.hiderID = None
+        # self.hiderID = None #REAL
         self.seekerController = None
-        self.hiderController = None
+        # self.hiderController = None #REAL
         # add walls
         for i, row in enumerate(self.gridArr):
             for j, cell in enumerate(row):
@@ -66,7 +76,23 @@ class Grid:
         # for i in range(self.gridArr.shape[1]):
         #     self.ps.add_line(Segment((-100+(i*self.cellWidth), -100), (-100+(i*self.cellWidth), 100)))
         
-
+    def handleIncoming(self):
+        if self.socket.hasPendingDatagrams():
+            datagram = self.socket.receiveDatagram()
+            position = json.loads(str(datagram.data(), 'utf-8'))
+            x, y = position['x'], position['y']
+            # convert to gui metrics (between -100 and +100)
+            # assumung the real world dimension is 120x120 : CHANGE IF NEEDED!!!
+            x -= 120/2
+            x *= 100/(120/2)
+            y -= 120/2
+            y *= 100/(120/2)
+            y*= -1
+            self.pos_fram_real = Point(x, y)
+        print(self.positionToIndex(self.pos_fram_real))
+    
+    def handleError(self):
+        print("error in udp connection!")
 
     
     def indexToPos(self, row, column):
@@ -81,11 +107,16 @@ class Grid:
     
     def step(self):
         i_s, j_s = self.positionToIndex(self.ps.robot_feedback(self.seekerID)[0])
-        i_h, j_h = self.positionToIndex(self.ps.robot_feedback(self.hiderID)[0])
+        # i_h, j_h = self.positionToIndex(self.ps.robot_feedback(self.hiderID)[0]) #REAL
+        i_h, j_h = self.positionToIndex(self.pos_fram_real) # REAL
+        # print(self.pos_fram_real, (i_h, j_h))
+        if self.maze.maze[i_s, j_s]==-1 or self.maze.maze[i_h, j_h]==-1:
+            print("someone is in the wall")
+            return
         state = self.maze.index_2_state((i_s, j_s), (i_h, j_h))
         action_seeker = self.policy_seeker[state]
-        action_hider = self.policy_hider[state]
-        print(action_seeker, action_hider)
+        # action_hider = self.policy_hider[state] #REAL
+        # print(action_seeker, action_hider)
         
         # seeker
         if action_seeker == "up":
@@ -99,25 +130,26 @@ class Grid:
         else:
             setpoint_seeker = self.indexToPos(i_s, j_s)
         
-        # hider
-        if action_hider == "up":
-            setpoint_hider = self.indexToPos(i_h-1, j_h)
-        elif action_hider == "down":
-            setpoint_hider = self.indexToPos(i_h+1, j_h)
-        elif action_hider == "left":
-            setpoint_hider = self.indexToPos(i_h, j_h-1)
-        elif action_hider == "right":
-            setpoint_hider = self.indexToPos(i_h, j_h+1)
-        else:
-            setpoint_hider = self.indexToPos(i_h, j_h)
+        # hider  #REAL
+        # if action_hider == "up":
+        #     setpoint_hider = self.indexToPos(i_h-1, j_h)
+        # elif action_hider == "down":
+        #     setpoint_hider = self.indexToPos(i_h+1, j_h)
+        # elif action_hider == "left":
+        #     setpoint_hider = self.indexToPos(i_h, j_h-1)
+        # elif action_hider == "right":
+        #     setpoint_hider = self.indexToPos(i_h, j_h+1)
+        # else:
+        #     setpoint_hider = self.indexToPos(i_h, j_h)
     
         if (i_s, j_s) == (i_h, j_h):
             command_seeker = command_hider = Point(0, 0)
         else:
             command_seeker = self.seekerController.update((setpoint_seeker.x, setpoint_seeker.y))
-            command_hider = self.hiderController.update((setpoint_hider.x, setpoint_hider.y))
-        self.ps.robot_command(self.seekerID, command_seeker)
-        self.ps.robot_command(self.hiderID, command_hider)
+            # command_hider = self.hiderController.update((setpoint_hider.x, setpoint_hider.y)) #REAL
+        # self.ps.robot_command(self.seekerID, command_seeker)
+        # self.ps.robot_command(self.hiderID, command_hider) #REAL
+        self.ps.set_virtual_robot(self.pos_fram_real.x, self.pos_fram_real.y, Qt.GlobalColor.black)
 
 
 
@@ -126,9 +158,9 @@ class Grid:
     def reset(self, seekerPos:Point, hiderPos:Point):
         self.ps.removeRobots()
         self.seekerID = self.ps.add_robot(seekerPos, Qt.GlobalColor.red)
-        self.hiderID = self.ps.add_robot(hiderPos, Qt.GlobalColor.blue)
+        # self.hiderID = self.ps.add_robot(hiderPos, Qt.GlobalColor.blue) #REAL
         self.seekerController = GotoPoint(ps=self.ps, robotID=self.seekerID, pid_coef=(20, 0, 0),threshold=0.05)
-        self.hiderController = GotoPoint(ps=self.ps, robotID=self.hiderID, pid_coef=(20, 0, 0),threshold=0.05)
+        # self.hiderController = GotoPoint(ps=self.ps, robotID=self.hiderID, pid_coef=(20, 0, 0),threshold=0.05) #REAL
     
     
 

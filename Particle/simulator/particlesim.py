@@ -48,6 +48,7 @@ class ParticleSim():
         # store the lines (not considered as obstacles)
         self.lines = []
         self.rectangles = []
+        self.virtual_robot = None
 
        
     
@@ -62,6 +63,9 @@ class ParticleSim():
     # adds a new rect to the environment(no impact on the physics)
     def add_rect(self, coordinate):
         self.rectangles.append(coordinate)
+    
+    def set_virtual_robot(self, x: float, y: float, color: Qt.GlobalColor):
+        self.virtual_robot = (x, y, color)
 
     # adds a new robot with initial position of 'pos' - returns the new id
     def add_robot(self, pos: Point, color: Qt.GlobalColor):
