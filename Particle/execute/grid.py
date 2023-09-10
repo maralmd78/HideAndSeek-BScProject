@@ -3,7 +3,6 @@ from sympy import Point, Segment
 from simulator.particlesim import ParticleSim
 from PyQt6.QtCore import Qt, QRectF
 from execute.control import GotoPoint
-# from execute.mazeSim import MazeSim, QLearning
 from execute.maze import MazeSim, Qlearning
 import pickle
 
