@@ -20,8 +20,8 @@ class thread_cv(QThread):
         self.timer.setInterval(250)
         self.timer.start()
 
-        self.rectangle = [[218, 84], [482, 352]]
-        self.rotation = 4
+        self.rectangle = [[186, 86], [450, 354]]
+        self.rotation = -6
         self.calibration_process = False
         self.field_height = 120
         self.field_width = 120
@@ -55,7 +55,7 @@ class thread_cv(QThread):
         frame = self.rotate_image(frame, self.rotation)
         if self.calibration_process:
             frame = cv2.rectangle(frame, tuple(self.rectangle[0]), tuple(self.rectangle[1]), (0, 0, 255), 4)
-            # print(self.rectangle, self.rotation)
+            print(self.rectangle, self.rotation)
         else:
             mask = np.zeros(frame.shape[:2], np.uint8)
             mask[self.rectangle[0][1]:self.rectangle[1][1], self.rectangle[0][0]:self.rectangle[1][0]] = 255
