@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
         self.lineEdit_direction1.editingFinished.connect(self.direction1Config)
         self.lineEdit_direction2.editingFinished.connect(self.direction2Config)
         self.lineEdit_direction3.editingFinished.connect(self.direction3Config)
-
+ 
         self.pushButton_mode.pressed.connect(self.modePressed)
 
         self.setFocus()
@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
     def inverseVelocityEq(self):
         u = (1/self.r)*(self.H_matrix)@(np.array(self.q_dot))
         u = (u/(2*np.pi))*self.stepperRev
-        data = {"S1":np.abs(u[0]),"S2":np.abs(u[1]),"S3":np.abs(u[2]),"D1":self.sign(u[0]),"D2":self.sign(u[1]),"D3":self.sign(u[2])}
+        data = {"S1":(np.abs(u[0]))/1.5,"S2":(np.abs(u[1]))/1.5,"S3":(np.abs(u[2]))/1.5,"D1":self.sign(u[0]),"D2":self.sign(u[1]),"D3":self.sign(u[2])}
         return data
 
     @pyqtSlot()
