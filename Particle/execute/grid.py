@@ -1,7 +1,7 @@
 import numpy as np
 from sympy import Point, Segment
 from simulator.particlesim import ParticleSim
-from PyQt6.QtCore import Qt, QRectF, QObject, QByteArray
+from PyQt6.QtCore import Qt, QRectF, QObject, QByteArray, QTimer
 from PyQt6.QtNetwork import QUdpSocket, QHostAddress, QAbstractSocket, QNetworkDatagram
 from execute.control import GotoPoint
 from execute.maze import MazeSim, Qlearning
@@ -13,13 +13,14 @@ class Grid(QObject):
         super().__init__()
         self.ps = ps
         self.maze = maze
+        
 
         self.socket = QUdpSocket()
         self.socket.readyRead.connect(self.handleIncoming)
         self.socket.errorOccurred.connect(self.handleError)
         if not self.socket.bind(QHostAddress.SpecialAddress.LocalHost, 1234, QAbstractSocket.BindFlag.ShareAddress | QAbstractSocket.BindFlag.ReuseAddressHint):
             print("ERROR in binding the socket")
-        self.pos_fram_real = Point(0, 0)
+        self.pos_fram_real = None
         
         # with open('Qtable_train_seeker&hider_final-50000.pkl', "rb") as f:  # Python 3: open(..., 'rb')
         #     self.Qtable_seeker, self.Qtable_hider = pickle.load(f)
@@ -75,7 +76,16 @@ class Grid(QObject):
         #     self.ps.add_line(Segment((-100, 100-(i*self.cellHeight)), (100, 100-(i*self.cellHeight))))
         # for i in range(self.gridArr.shape[1]):
         #     self.ps.add_line(Segment((-100+(i*self.cellWidth), -100), (-100+(i*self.cellWidth), 100)))
-        
+        self.start_timer = QTimer()
+        self.start_timer.setInterval(20000)
+        self.start_timer.setSingleShot(True)
+        self.start_timer.timeout.connect(self.handleStart)
+        self.start = False
+        self.start_timer.start()
+    
+    def handleStart(self):
+        self.start = True
+
     def handleIncoming(self):
         if self.socket.hasPendingDatagrams():
             datagram = self.socket.receiveDatagram()
@@ -83,13 +93,15 @@ class Grid(QObject):
             x, y = position['x'], position['y']
             # convert to gui metrics (between -100 and +100)
             # assumung the real world dimension is 120x120 : CHANGE IF NEEDED!!!
+            guiWidth = 100 - 1*self.cellWidth ## subtract wall blocks from left and right sides
+            guiHeight = 100 - 1*self.cellHeight ## subtract wall blocks from up and down sides
             x -= 120/2
-            x *= 100/(120/2)
+            x *= guiWidth/(120/2)
             y -= 120/2
-            y *= 100/(120/2)
+            y *= guiHeight/(120/2)
             y*= -1
             self.pos_fram_real = Point(x, y)
-        print(self.positionToIndex(self.pos_fram_real))
+        # print(self.positionToIndex(self.pos_fram_real))
     
     def handleError(self):
         print("error in udp connection!")
@@ -106,10 +118,14 @@ class Grid(QObject):
         return (y//self.cellHeight, x//self.cellWidth)
     
     def step(self):
+        if not self.start:
+            return
+        if self.pos_fram_real == None:
+            return
         i_s, j_s = self.positionToIndex(self.ps.robot_feedback(self.seekerID)[0])
         # i_h, j_h = self.positionToIndex(self.ps.robot_feedback(self.hiderID)[0]) #REAL
         i_h, j_h = self.positionToIndex(self.pos_fram_real) # REAL
-        # print(self.pos_fram_real, (i_h, j_h))
+        print((i_h, j_h))
         if self.maze.maze[i_s, j_s]==-1 or self.maze.maze[i_h, j_h]==-1:
             print("someone is in the wall")
             return
@@ -147,7 +163,7 @@ class Grid(QObject):
         else:
             command_seeker = self.seekerController.update((setpoint_seeker.x, setpoint_seeker.y))
             # command_hider = self.hiderController.update((setpoint_hider.x, setpoint_hider.y)) #REAL
-        # self.ps.robot_command(self.seekerID, command_seeker)
+        self.ps.robot_command(self.seekerID, command_seeker)
         # self.ps.robot_command(self.hiderID, command_hider) #REAL
         self.ps.set_virtual_robot(self.pos_fram_real.x, self.pos_fram_real.y, Qt.GlobalColor.black)
 
