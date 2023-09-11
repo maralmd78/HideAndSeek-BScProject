@@ -22,7 +22,7 @@ class Execute(threading.Thread):
         # counter = 0
         # controller = GotoPoint(ps=self.ps, robotID=0, pid_coef=(20, 0, 0),threshold=0.05)
         
-        self.grid.reset(seekerPos=self.grid.indexToPos(1, 1), hiderPos=self.grid.indexToPos(5, 1))
+        self.grid.reset(seekerPos=self.grid.indexToPos(1, 5), hiderPos=self.grid.indexToPos(5, 1))
         
         while True:
             self.grid.step()
@@ -42,7 +42,7 @@ class Execute(threading.Thread):
          
             # counter += 1
             self.ps.step()
-            time.sleep(0.01)
+            time.sleep(0.008)
 
 
 

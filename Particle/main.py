@@ -9,7 +9,7 @@ import sys
 QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
 app = QApplication(sys.argv)
 
-ps = ParticleSim(delta_t=0.01)
+ps = ParticleSim(delta_t=0.008)
 gui = GUI(ps=ps)
 gui.show()
 
