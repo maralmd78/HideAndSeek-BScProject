@@ -8,7 +8,9 @@ import sys
 import json 
 import numpy as np
 import argparse
+import pickle
 
+positions = []
 class thread_cv(QThread):
     new_frame_signal = pyqtSignal(QImage)
     
@@ -38,6 +40,11 @@ class thread_cv(QThread):
     
     def sendPosition(self):
         if self.position is not None:
+            positions.append(self.position)
+            if len(positions)==50:
+                with open('realposition(right move)', 'wb') as f:  
+                    pickle.dump([positions], f)
+            # print(self.position, type(self.position))
             self.socket.writeDatagram(QByteArray(bytes(json.dumps(self.position), 'utf-8')), QHostAddress.SpecialAddress.LocalHost, 1234)
 
     def run(self):
